@@ -7,10 +7,14 @@ apt install python3.10-venv
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
+deactivate
 ```
 
 ## Конфигурация `.env`
+
+```
+cp .env.example .env
+```
 
 ```bash
 # SECRET_KEY
