@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="dark">
+<head>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.png') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timetracker login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1e1e1e;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background-color: #2d2d2d;
+            border: 1px solid #3a3a3a;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .form-control {
+            background-color: #3a3a3a;
+            border: 1px solid #4a4a4a;
+            color: #e0e0e0;
+        }
+        .form-control:focus {
+            background-color: #3a3a3a;
+            border-color: #6c757d;
+            color: #fff;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+        }
+        .alert {
+            background-color: #3a3a3a;
+            border-color: #4a4a4a;
+            color: #f8f9fa;
+        }
+        .card-header {
+            border-bottom: 1px solid #3a3a3a;
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h4 class="text-light">timetracker</h4>
+                    </div>
+                    <div class="card-body">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endwith %}
+                        <form method="post">
+                            <div class="mb-3">
+                                <label for="username" class="form-label text-light">Логин</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label text-light">Пароль</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Войти</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

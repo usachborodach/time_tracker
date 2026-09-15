@@ -1,0 +1,21 @@
+[Unit]
+Description=Time Tracker Flask Service
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/root/time_tracker
+EnvironmentFile=/root/time_tracker/.env
+ExecStartPre=/usr/bin/python3 /root/time_tracker/create_index.py
+ExecStart=/usr/local/bin/gunicorn \
+    -w 2 --timeout 120 \
+    --access-logfile /var/log/time_tracker/access.log \
+    --error-logfile /var/log/time_tracker/error.log \
+    -b 127.0.0.1:8001 app:app
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
