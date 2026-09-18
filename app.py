@@ -48,6 +48,7 @@ def verify_password(username, password):
 ACTIVITIES = [
     'Обзор задач',
     'Работал',
+    'Учился',
     'Кодил для себя',
     'Домашние задачи',
     'Банджо',
