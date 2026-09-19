@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}time_tracker{% endblock %}
+
+{% block extra_css %}
+    .navbar { background-color: #2d2d2d !important; border-bottom: 1px solid #3a3a3a; }
+    .navbar-brand, .navbar-text { color: #e0e0e0 !important; }
+
+    .table { background-color: #2d2d2d; border-color: #3a3a3a; color: #e0e0e0; }
+    .table th { background-color: #3a3a3a; border-color: #4a4a4a; color: #d0d0d0; }
+    .table td { border-color: #3a3a3a; vertical-align: middle; }
+    .table tbody tr:hover { background-color: #3d3d3d; }
+
+    .activity-select {
+        background-color: #3a3a3a;
+        color: #e0e0e0;
+        border: 1px solid #4a4a4a;
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        width: 100%;
+    }
+    .activity-select:focus { background-color: #4a4a4a; border-color: #6c757d; }
+    .activity-select option { background-color: #2d2d2d; color: #e0e0e0; }
+
+    .text-muted { color: #888888 !important; }
+
+    .save-indicator {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-left: 10px;
+    }
+    .save-indicator.saved  { color: #28a745; }
+    .save-indicator.saving { color: #ffc107; }
+
+    @media (max-width: 576px) {
+        .activity-select { font-size: 0.8rem; padding: 0.15rem 0.3rem; }
+        .table th, .table td { padding: 0.3rem; }
+        .btn-group .btn { font-size: 0.8rem; padding: 0.25rem 0.5rem; }
+    }
+{% endblock %}
+
+{% block body %}
+<nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+        <span class="navbar-brand">time_tracker</span>
+        <div class="d-flex align-items-center">
+            <span class="navbar-text me-3">{{ date.strftime('%d.%m.%Y') }}</span>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light btn-sm">Выйти</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-3">
+    <!-- Навигация по датам -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="btn-group w-100" role="group">
+                <a href="{{ url_for('main.index', date=(date - timedelta(days=1)).strftime('%Y-%m-%d')) }}"
+                   class="btn btn-outline-secondary">&laquo; Предыдущий</a>
+                <a href="{{ url_for('main.index') }}" class="btn btn-outline-primary">Сегодня</a>
+                <a href="{{ url_for('main.index', date=(date + timedelta(days=1)).strftime('%Y-%m-%d')) }}"
+                   class="btn btn-outline-secondary">Следующий &raquo;</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">Время</th>
+                    <th>Активность</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for hour in hours_list %}
+                <tr>
+                    <td class="text-center fw-bold">{{ hour }}</td>
+                    <td>
+                        <select class="activity-select form-select form-select-sm" data-hour="{{ hour }}">
+                            <option value="">—</option>
+                            {% for activity in activities %}
+                                <option value="{{ activity }}" {% if hours.get(hour) == activity %}selected{% endif %}>
+                                    {{ activity }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row mt-2">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                <i>Изменения сохраняются автоматически при выборе активности.</i>
+            </span>
+            <span id="saveIndicator" class="save-indicator saved">✔ Всё сохранено</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selects = document.querySelectorAll('.activity-select');
+        const currentDate = '{{ date.strftime("%Y-%m-%d") }}';
+        const indicator = document.getElementById('saveIndicator');
+
+        function setIndicator(state, message) {
+            indicator.textContent = message;
+            indicator.className = 'save-indicator ' + state;
+        }
+
+        selects.forEach(select => {
+            select.addEventListener('change', function() {
+                const hour = this.dataset.hour;
+                const activity = this.value;
+
+                setIndicator('saving', '⏳ Сохранение...');
+
+                fetch('/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: currentDate,
+                        hour: hour,
+                        activity: activity
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        setIndicator('saved', '✔ Всё сохранено');
+                    } else {
+                        setIndicator('', '⚠ Ошибка сохранения');
+                        console.warn('Ошибка сохранения:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    setIndicator('', '⚠ Ошибка сети при сохранении');
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

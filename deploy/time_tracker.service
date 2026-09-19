@@ -7,12 +7,16 @@ User=root
 Group=root
 WorkingDirectory=/root/time_tracker
 EnvironmentFile=/root/time_tracker/.env
-ExecStartPre=/usr/bin/python3 /root/time_tracker/create_index.py
+Environment=FLASK_ENV=production
+
+# Создаём уникальный индекс перед запуском
+ExecStartPre=/usr/local/bin/flask --app wsgi create-index
+
 ExecStart=/usr/local/bin/gunicorn \
     -w 2 --timeout 120 \
     --access-logfile /var/log/time_tracker/access.log \
     --error-logfile /var/log/time_tracker/error.log \
-    -b 127.0.0.1:8001 app:app
+    -b 127.0.0.1:8001 wsgi:app
 
 Restart=always
 RestartSec=10
