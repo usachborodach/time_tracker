@@ -41,6 +41,7 @@ ln -sf \
   /etc/systemd/system/time_tracker.service
 systemctl daemon-reload
 systemctl enable --now time_tracker
+systemctl status time_tracker
 
 ln -sf \
   /root/time_tracker/deploy/nginx.conf \
