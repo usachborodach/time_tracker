@@ -43,10 +43,11 @@
 <nav class="navbar navbar-expand-lg">
     <div class="container-fluid">
         <span class="navbar-brand">time_tracker</span>
-        <div class="d-flex align-items-center">
-            <span class="navbar-text me-3">{{ date.strftime('%d.%m.%Y') }}</span>
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light btn-sm">Выйти</a>
-        </div>
+            <div class="d-flex align-items-center">
+                <span class="navbar-text me-3">{{ date.strftime('%d.%m.%Y') }}</span>
+                <a href="{{ url_for('analytics.analytics') }}" class="btn btn-outline-light btn-sm me-2">Аналитика</a>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light btn-sm">Выйти</a>
+            </div>
     </div>
 </nav>
 

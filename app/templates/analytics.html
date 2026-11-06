@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Аналитика — time_tracker{% endblock %}
+
+{% block extra_css %}
+    .navbar { background-color: #2d2d2d !important; border-bottom: 1px solid #3a3a3a; }
+    .navbar-brand, .navbar-text { color: #e0e0e0 !important; }
+
+    .stat-card {
+        background-color: #2d2d2d; border: 1px solid #3a3a3a; border-radius: 12px;
+        padding: 0.9rem 1rem; text-align: center; height: 100%;
+    }
+    .stat-value { font-size: 1.5rem; font-weight: 600; color: #e0e0e0; }
+    .stat-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .chart-card {
+        background-color: #2d2d2d; border: 1px solid #3a3a3a; border-radius: 12px;
+        padding: 1rem;
+    }
+    .chart-card h5 { color: #d0d0d0; margin-bottom: 0.75rem; font-size: 0.95rem; }
+    .chart-wrap { position: relative; height: 340px; }
+
+    .heatmap {
+        display: grid;
+        grid-template-columns: 40px repeat(17, 1fr);
+        gap: 2px;
+    }
+    .heatmap .cell {
+        aspect-ratio: 1 / 1; border-radius: 3px; background: #252525;
+    }
+    .heatmap .cell:hover { outline: 1px solid #6c757d; }
+    .heatmap .label {
+        font-size: 0.7rem; color: #888;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .heatmap .label-h {
+        font-size: 0.6rem; color: #888;
+        writing-mode: vertical-rl; transform: rotate(180deg);
+    }
+
+    @media (max-width: 768px) {
+        .chart-wrap { height: 260px; }
+        .stat-value { font-size: 1.2rem; }
+    }
+{% endblock %}
+
+{% block body %}
+<nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+        <span class="navbar-brand">time_tracker · аналитика</span>
+        <div class="d-flex align-items-center">
+            <span class="navbar-text me-3 d-none d-md-inline">
+                {{ start.strftime('%d.%m.%Y') }} — {{ end.strftime('%d.%m.%Y') }}
+            </span>
+            <a href="{{ url_for('main.index') }}" class="btn btn-outline-light btn-sm me-2">К трекеру</a>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light btn-sm">Выйти</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-3">
+
+    <!-- Фильтр периода -->
+    <form class="row g-2 align-items-end mb-3" method="get">
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1">С</label>
+            <input type="date" class="form-control form-control-sm" name="start"
+                   value="{{ start.strftime('%Y-%m-%d') }}">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small text-muted mb-1">По</label>
+            <input type="date" class="form-control form-control-sm" name="end"
+                   value="{{ end.strftime('%Y-%m-%d') }}">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary btn-sm">Показать</button>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group btn-group-sm" role="group">
+                {% for label, p_start, p_end in presets %}
+                    <a class="btn btn-outline-secondary"
+                       href="{{ url_for('analytics.analytics',
+                                        start=p_start.strftime('%Y-%m-%d'),
+                                        end=p_end.strftime('%Y-%m-%d')) }}">{{ label }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </form>
+
+    <!-- Статы -->
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-value">{{ total_hours }}</div>
+                <div class="stat-label">часов всего</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-value">{{ days_count }}</div>
+                <div class="stat-label">дней с данными</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-value">{{ avg_per_day }}</div>
+                <div class="stat-label">часов в день</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-value" style="font-size: 1.05rem;">{{ top_activity or '—' }}</div>
+                <div class="stat-label">топ · {{ top_hours }} ч</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stacked bar -->
+    <div class="chart-card mb-3">
+        <h5>Часы по активностям · по дням</h5>
+        <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <!-- Doughnut -->
+        <div class="col-md-5">
+            <div class="chart-card h-100">
+                <h5>Итого по активностям</h5>
+                <div class="chart-wrap"><canvas id="totalsChart"></canvas></div>
+            </div>
+        </div>
+        <!-- Heatmap -->
+        <div class="col-md-7">
+            <div class="chart-card h-100">
+                <h5>Когда что происходит · день недели × час</h5>
+                <div class="heatmap" id="heatmap"></div>
+                <div class="small text-muted mt-2">
+                    Чем ярче — тем чаще в этот час в этот день недели что-то отмечено
+                    (max: {{ heatmap_max }}).
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const daily = {{ daily|tojson }};
+    const totals = {{ totals|tojson }};
+    const activities = {{ ordered_activities|tojson }};
+    const heatmap = {{ heatmap|tojson }};
+    const heatmapMax = {{ heatmap_max|tojson }};
+    const weekdayNames = {{ weekday_names|tojson }};
+    const hourKeys = {{ hour_keys|tojson }};
+
+    const palette = [
+        '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+        '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac',
+        '#8cd17d', '#b6992d'
+    ];
+    const colorMap = {};
+    activities.forEach((a, i) => { colorMap[a] = palette[i % palette.length]; });
+
+    Chart.defaults.color = '#d0d0d0';
+    Chart.defaults.borderColor = '#3a3a3a';
+
+    // --- Stacked bar ---
+    const labels = daily.map(d => d.date);
+    const datasets = activities.map(a => ({
+        label: a,
+        data: daily.map(d => d.by_activity[a] || 0),
+        backgroundColor: colorMap[a],
+        stack: 'hours',
+        borderWidth: 0,
+    }));
+
+    new Chart(document.getElementById('dailyChart'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        footer: items => 'Всего: ' + items.reduce((s, i) => s + i.parsed.y, 0) + ' ч'
+                    }
+                }
+            },
+            scales: {
+                x: { stacked: true, ticks: { maxRotation: 0, autoSkip: true } },
+                y: {
+                    stacked: true,
+                    title: { display: true, text: 'Часы' },
+                    ticks: { precision: 0 }
+                }
+            }
+        }
+    });
+
+    // --- Doughnut ---
+    new Chart(document.getElementById('totalsChart'), {
+        type: 'doughnut',
+        data: {
+            labels: activities,
+            datasets: [{
+                data: activities.map(a => totals[a] || 0),
+                backgroundColor: activities.map(a => colorMap[a]),
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+            }
+        }
+    });
+
+    // --- Heatmap ---
+    const hm = document.getElementById('heatmap');
+    const corner = document.createElement('div');
+    corner.className = 'label';
+    hm.appendChild(corner);
+    hourKeys.forEach(h => {
+        const el = document.createElement('div');
+        el.className = 'label label-h';
+        el.textContent = h;
+        hm.appendChild(el);
+    });
+    weekdayNames.forEach((name, wd) => {
+        const lbl = document.createElement('div');
+        lbl.className = 'label';
+        lbl.textContent = name;
+        hm.appendChild(lbl);
+        hourKeys.forEach((hour, hi) => {
+            const v = heatmap[wd][hi];
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            if (v > 0 && heatmapMax > 0) {
+                const intensity = 0.15 + 0.85 * (v / heatmapMax);
+                cell.style.backgroundColor = 'rgba(13, 110, 253, ' + intensity.toFixed(3) + ')';
+            }
+            cell.title = name + ', ' + hour + ': ' + v + ' отм.';
+            hm.appendChild(cell);
+        });
+    });
+})();
+</script>
+{% endblock %}
