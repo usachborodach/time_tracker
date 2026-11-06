@@ -38,6 +38,8 @@
         writing-mode: vertical-rl; transform: rotate(180deg);
     }
 
+    .hint { font-size: 0.8rem; color: #888; }
+
     @media (max-width: 768px) {
         .chart-wrap { height: 260px; }
         .stat-value { font-size: 1.2rem; }
@@ -61,7 +63,7 @@
 <div class="container mt-3">
 
     <!-- Фильтр периода -->
-    <form class="row g-2 align-items-end mb-3" method="get">
+    <form class="row g-2 align-items-end mb-2" method="get">
         <div class="col-auto">
             <label class="form-label small text-muted mb-1">С</label>
             <input type="date" class="form-control form-control-sm" name="start"
@@ -86,6 +88,11 @@
             </div>
         </div>
     </form>
+
+    <div class="hint mb-3">
+        Учитываются часы 07:00–23:00 из трекера +
+        {{ default_sleep_hours }} ч «{{ sleep_activity }}» (00:00–06:59) на каждый день.
+    </div>
 
     <!-- Статы -->
     <div class="row g-2 mb-3">
@@ -117,7 +124,12 @@
 
     <!-- Stacked bar -->
     <div class="chart-card mb-3">
-        <h5>Часы по активностям · по дням</h5>
+        <h5>
+            Часы по активностям · по дням
+            <small class="text-muted" style="font-size:0.75rem; font-weight:400;">
+                (включая {{ default_sleep_hours }} ч «{{ sleep_activity }}» 00:00–06:59)
+            </small>
+        </h5>
         <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
     </div>
 
@@ -135,6 +147,7 @@
                 <h5>Когда что происходит · день недели × час</h5>
                 <div class="heatmap" id="heatmap"></div>
                 <div class="small text-muted mt-2">
+                    Только трекаемые часы 07:00–23:00.
                     Чем ярче — тем чаще в этот час в этот день недели что-то отмечено
                     (max: {{ heatmap_max }}).
                 </div>
@@ -216,7 +229,12 @@
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.label + ': ' + ctx.parsed + ' ч'
+                    }
+                }
             }
         }
     });

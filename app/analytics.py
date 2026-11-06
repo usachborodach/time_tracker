@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 analytics_bp = Blueprint('analytics', __name__)
 
 WEEKDAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-HOUR_KEYS = [f'{h:02d}:00' for h in range(7, 24)]
+
+# Трекаем 07:00–23:00; 00:00–06:59 не хранятся и считаются сном.
+TRACKED_HOURS = [f'{h:02d}:00' for h in range(7, 24)]
+SLEEP_ACTIVITY = 'Спал'
+DEFAULT_SLEEP_HOURS = 7  # 00:00–06:59
 
 
 def _parse_date(raw, fallback):
@@ -42,13 +46,20 @@ def _aggregate(days):
         if not d:
             continue
         hours_map = doc.get('hours') or {}
+
         by_act = Counter()
         for hour, activity in hours_map.items():
             if not activity:
                 continue
-            by_act[activity] += 1          # 1 слот = 1 час
+            by_act[activity] += 1
             totals[activity] += 1
+            # heatmap только по трекаемому диапазону 07:00–23:00
             wd_hour[d.weekday()][hour] += 1
+
+        # Нетрекаемые 00:00–06:59 по умолчанию = сон
+        by_act[SLEEP_ACTIVITY] += DEFAULT_SLEEP_HOURS
+        totals[SLEEP_ACTIVITY] += DEFAULT_SLEEP_HOURS
+
         daily.append({
             'date': d.strftime('%Y-%m-%d'),
             'by_activity': dict(by_act),
@@ -59,7 +70,7 @@ def _aggregate(days):
     heatmap_max = 0
     for wd in range(7):
         row = []
-        for hour in HOUR_KEYS:
+        for hour in TRACKED_HOURS:
             v = wd_hour[wd].get(hour, 0)
             row.append(v)
             heatmap_max = max(heatmap_max, v)
@@ -103,7 +114,9 @@ def analytics():
         totals=dict(totals),
         ordered_activities=ordered_activities,
         heatmap=heatmap, heatmap_max=heatmap_max,
-        weekday_names=WEEKDAY_NAMES, hour_keys=HOUR_KEYS,
+        weekday_names=WEEKDAY_NAMES, hour_keys=TRACKED_HOURS,
         total_hours=total_hours, days_count=days_count,
         avg_per_day=avg_per_day, top_activity=top_activity, top_hours=top_hours,
+        default_sleep_hours=DEFAULT_SLEEP_HOURS,
+        sleep_activity=SLEEP_ACTIVITY,
     )
